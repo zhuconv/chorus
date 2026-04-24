@@ -19,5 +19,9 @@ output/
 *.srt
 *.vtt
 
+# ...but keep curated demo assets
+!examples/*.mp3
+!examples/*.txt
+
 # OS
 .DS_Store

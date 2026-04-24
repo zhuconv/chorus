@@ -1,92 +1,126 @@
 # Oratio
 
-Turn a thought leader's interview — or any long-form YouTube video — into a two-voice podcast you can actually listen to on the run.
+**Turn a 60-minute YouTube lecture into a 5-minute podcast — written by agents, narrated in two voices, running entirely off your Claude subscription.**
 
-One command takes a URL, pulls the transcript, runs a Claude agent pipeline that extracts verbatim opinions and writes a tight narrative script, and synthesizes the result with Kokoro 82M TTS into an MP3 you can `open`.
+Oratio is a single CLI that points at a YouTube URL, runs a five-stage Claude Opus 4.6 agent pipeline to extract verbatim opinions and draft a production-grade script, then renders it with Kokoro 82M TTS into MP3s you can actually listen to. Two voices — a narrator plus the subject, speaking their own words verbatim — and no `ANTHROPIC_API_KEY`: the Claude Agent SDK shells out to your local `claude` binary and inherits Pro/Max auth.
+
+[![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](#license)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
+[![Built with Claude](https://img.shields.io/badge/agents-Claude%20Opus%204.6-D97757.svg)](https://docs.claude.com/en/docs/claude-code)
+[![TTS Kokoro 82M](https://img.shields.io/badge/TTS-Kokoro%2082M-7C3AED.svg)](https://github.com/hexgrad/kokoro)
+[![yt-dlp](https://img.shields.io/badge/fetch-yt--dlp-FF0000.svg)](https://github.com/yt-dlp/yt-dlp)
+
+## Listen to an example
+
+A 4.9-minute short produced end-to-end by the pipeline from a 64-minute RLC 2025 keynote by **Dale Schuurmans** (Google DeepMind), "Language Models and Computation." No human edits inside the run.
+
+🎧 **[Play the MP3](https://raw.githubusercontent.com/zhuconv/oratio/main/examples/dale_schuurmans_llms_as_universal_computers.mp3)** · 📄 **[Read the script](examples/dale_schuurmans_llms_as_universal_computers.txt)**
+
+The `.txt` is the raw `[HOST]` / `[DALE]` tagged script the agents wrote. The MP3 is what Kokoro did with it. Both live in [`examples/`](examples/).
+
+## Quickstart
 
 ```bash
+brew install espeak-ng ffmpeg
+npm install -g @anthropic-ai/claude-code && claude    # log in once
+git clone https://github.com/zhuconv/oratio && cd oratio
+uv sync
 uv run oratio "https://www.youtube.com/watch?v=<ID>"
+open output/<Subject>/<date>__<id>__<slug>/short/short.mp3
 ```
 
-Output: one ~5-minute distilled "short" version, plus a long version split into ~10-minute thematic chapters.
+That's it. One short MP3, plus one ~10-minute MP3 per thematic chapter.
 
-## Status
+## Why it exists
 
-POC. Two videos validated end-to-end:
+Long-form interviews and academic talks are the highest-signal AI content on the internet — and the hardest to consume. You rarely have 90 free minutes. You often do have 5.
 
-- **Mo Gawdat** (40-min interview) → 5 MP3s, ~29 min total, manually assembled (before the orchestrator existed).
-- **Dale Schuurmans** (64-min academic talk on LLMs and computation) → 5 MP3s, ~42 min total, fully produced by the agent orchestrator with zero human editing inside the pipeline.
+Two things make Oratio more than "another summarizer":
 
-## How it works
+1. **The agents call your local `claude` CLI.** No API key, no billing, no token juggling — the Agent SDK spawns the logged-in binary and agent turns bill against your Pro or Max subscription. The orchestrator is just five `query()` calls stitched together with a critic loop.
+2. **Quotes are preserved verbatim, in the subject's voice.** Every line tagged `[DALE]` in the script is a byte-for-byte substring of the transcript. A dedicated critic agent greps every quote against `transcript.txt` and blocks the pipeline if even one word drifts. Then Kokoro renders those quotes in a different voice from the narrator, so "what the host says about Dale" and "what Dale actually said" are audibly distinct.
+
+The result is something closer to a written essay read aloud than a robotic recap — and because the quotes are audited, you can trust it more than a summary.
+
+## Pipeline
 
 ```
   YouTube URL
       │
       ▼
- ┌──────────────┐
- │  oratio-fetch │     yt-dlp → transcript.srt + transcript.txt + metadata.json
- └──────────────┘
+ ┌───────────────┐
+ │  oratio-fetch │   yt-dlp → transcript.srt + transcript.txt + metadata.json
+ └───────────────┘
       │
       ▼
  ┌─────────────────────────┐
- │ transcript-investigator │  Claude Opus 4.6 agent — reads transcript, extracts
- └─────────────────────────┘   (theme, thesis, verbatim_quote, timestamp) tuples
-      │                        → opinions.raw.json
+ │ transcript-investigator │  Opus 4.6 — extracts (theme, thesis, verbatim_quote,
+ └─────────────────────────┘  timestamp) tuples                → opinions.raw.json
+      │
       ▼
  ┌──────────────────────┐
- │  transcript-critic   │    Claude Opus 4.6 agent — greps every quote against
- └──────────────────────┘    the transcript, flags fabrications / overreach
-      │                       → transcript_critic_report.json
-      ▼                       (loops back to investigator if needs_revision, max 2x)
- ┌──────────────────────┐
- │ opinion-aggregator   │    Claude Opus 4.6 agent — clusters opinions into
- └──────────────────────┘    3-5 themes, picks narrative order, tags subject_gender
-      │                       → opinions.json
+ │  transcript-critic   │    Opus 4.6 — greps every quote against the transcript,
+ └──────────────────────┘    flags fabrication / overreach   → critic_report.json
+      │                      ↺ loops back to investigator (max 2x)
       ▼
  ┌──────────────────────┐
- │   script-writer      │    Claude Opus 4.6 agent — writes the short script +
- └──────────────────────┘    one long chapter per theme, in [HOST]/[SUBJECT] form
-      │                       → short/script.txt, long/chNN_<slug>_script.txt
+ │ opinion-aggregator   │    Opus 4.6 — clusters opinions into 3-5 themes, picks
+ └──────────────────────┘    narrative order, tags subject_gender → opinions.json
+      │
       ▼
  ┌──────────────────────┐
- │   script-critic      │    Claude Opus 4.6 agent — verifies every [SUBJECT] line
- └──────────────────────┘    is a verbatim extract + TTS-style compliance
-      │                       → script_critic_report.json
-      ▼                       (loops back to writer if needs_revision, max 2x)
+ │   script-writer      │    Opus 4.6 — writes short + one chapter per theme in
+ └──────────────────────┘    [HOST]/[SUBJECT] form        → short/, long/ch*.txt
+      │
+      ▼
  ┌──────────────────────┐
- │      oratio-tts      │    Kokoro 82M (local, CPU/MPS) — two-voice render
- └──────────────────────┘     → short.mp3, chNN_<slug>.mp3
+ │   script-critic      │    Opus 4.6 — re-verifies verbatim fidelity, TTS style,
+ └──────────────────────┘    word counts, acronym expansion
+      │                      ↺ loops back to writer (max 2x)
+      ▼
+ ┌──────────────────────┐
+ │      oratio-tts      │    Kokoro 82M, local (CPU/MPS) — two-voice render
+ └──────────────────────┘                               → short.mp3, chNN.mp3
 ```
 
-Each agent is a single `claude_agent_sdk.query()` call with a role-specific
-system prompt loaded from `.claude/agents/<role>.md`. Critics can send work
-back to their upstream agent for one retry before the orchestrator gives up
-and proceeds.
+Every agent is a single `claude_agent_sdk.query()` with a role-specific system prompt loaded from `.claude/agents/<role>.md`. Critics can send work back to their upstream agent for one retry before the orchestrator gives up and proceeds.
 
-## Setup
+## Case studies
 
-System deps (macOS):
+| Source | Length | Kind | Result |
+|---|---|---|---|
+| **Dale Schuurmans** — RLC 2025 keynote, *Language Models and Computation* | 64 min | Academic lecture | 5 MP3s, ~42 min total. Zero human edits inside the pipeline. [Listen.](https://raw.githubusercontent.com/zhuconv/oratio/main/examples/dale_schuurmans_llms_as_universal_computers.mp3) |
+| **Mo Gawdat** — interview on AI, UBI, and the job market | 40 min | Pop interview | 5 MP3s, ~29 min total. Validated end-to-end; assembled before the orchestrator landed. |
+
+Two wildly different source genres, same pipeline, coherent output. That's the main thing this POC was proving.
+
+## Setup in detail
+
+<details>
+<summary>Expand for prerequisites, Python, auth</summary>
+
+**System (macOS tested):**
 
 ```bash
 brew install espeak-ng ffmpeg
 ```
 
-Claude Code CLI must be installed and logged in — the Agent SDK spawns the
-local `claude` binary and inherits its auth, so a Pro/Max subscription covers
-all agent calls. **No `ANTHROPIC_API_KEY` needed.**
+**Claude Code CLI — the Agent SDK spawns this and inherits its login.** No `ANTHROPIC_API_KEY` is used anywhere in the orchestrator.
 
 ```bash
-# If you don't have it:
 npm install -g @anthropic-ai/claude-code
-claude        # log in once
+claude        # one-time login; Pro/Max covers all agent calls
 ```
 
-Python deps:
+**Python 3.11–3.12:**
 
 ```bash
-cd oratio
-uv sync       # Python 3.11+, installs yt-dlp, kokoro, claude-agent-sdk, torch, etc.
+uv sync       # installs yt-dlp, kokoro, claude-agent-sdk, torch, etc.
 ```
+
+**First Kokoro run** downloads ~330 MB of model weights from Hugging Face. After that it runs fully offline on CPU or Apple Silicon MPS.
+
+</details>
 
 ## Usage
 
@@ -96,76 +130,46 @@ uv sync       # Python 3.11+, installs yt-dlp, kokoro, claude-agent-sdk, torch, 
 uv run oratio "https://www.youtube.com/watch?v=E0Q96IKXx6Q"
 ```
 
-Produces per-video artifacts under a subject-indexed folder:
+Output layout (subject-indexed, date-sortable, re-runnable):
 
 ```
 output/
-├── _staging/                                  # fetch dumps here; moved out post-aggregate
-├── Mo_Gawdat/
-│   └── 2026-03-31__E0Q96IKXx6Q__ex_google_exec.../
-│       ├── metadata.json
-│       ├── transcript.srt                     # original subtitles
-│       ├── transcript.txt                     # [mm:ss] prefixed, deduped
-│       ├── opinions.raw.json                  # investigator output
-│       ├── transcript_critic_report.json
-│       ├── opinions.json                      # aggregator output (subject_gender, themes)
-│       ├── script_critic_report.json
-│       ├── short/
-│       │   ├── script.txt                     # ~800 words, ~5 min
-│       │   └── short.mp3
-│       └── long/
-│           ├── ch01_<slug>_script.txt         # ~1500 words each, ~10 min each
-│           ├── ch01_<slug>.mp3
-│           ├── ch02_<slug>_script.txt
-│           └── ch02_<slug>.mp3
 └── Dale_Schuurmans/
-    └── 2025-08-25__yGLoWZP1MyA__dale_schuurmans_language_models.../
-        └── ...
+    └── 2025-08-25__yGLoWZP1MyA__dale_schuurmans_language_models/
+        ├── metadata.json
+        ├── transcript.srt / transcript.txt
+        ├── opinions.raw.json              # investigator
+        ├── transcript_critic_report.json
+        ├── opinions.json                  # aggregator — themes, subject_gender
+        ├── script_critic_report.json
+        ├── short/
+        │   ├── script.txt                 # ~800 words, ~5 min
+        │   └── short.mp3
+        └── long/
+            ├── ch01_<slug>_script.txt     # ~1500 words / ~10 min per chapter
+            ├── ch01_<slug>.mp3
+            └── ...
 ```
 
-Folder name pattern: `<Subject_Name>/<YYYY-MM-DD>__<video_id>__<title_slug>/`. Date sorts
-chronologically, video_id stays unique, title_slug keeps the dir self-describing
-when browsing.
+A run lives in `output/_staging/<video_id>/` until the aggregator determines `subject_name`, then the orchestrator moves it to its final home. Re-running `--skip-fetch` locates the existing dir wherever it is.
 
-During a run the work-dir lives at `output/_staging/<video_id>/`. Once the
-aggregator determines `subject_name`, the orchestrator moves the dir to its
-final subject-indexed location. Re-running `--skip-fetch` on the same URL
-finds the existing dir wherever it lives.
-
-### Options
+### Flags
 
 ```bash
-uv run oratio <URL> [--model claude-opus-4-6]   # swap model if desired
+uv run oratio <URL> [--model claude-opus-4-6]   # any Opus-class model the CLI recognizes
                     [--skip-fetch]              # reuse existing transcript
                     [--skip-synth]              # stop before Kokoro (scripts only)
 ```
 
-### Running just one piece
+### Just one stage
 
-Each stage is also usable standalone:
+Every stage is a standalone CLI:
 
 ```bash
-# Transcript only
-uv run oratio-fetch <URL> -o output/
-
-# TTS only, from a hand-written script
-uv run oratio-tts path/to/script.txt -o out.mp3 --subject-gender male
+uv run oratio-fetch <URL> -o output/                      # transcript only
+uv run oratio-tts path/to/script.txt -o out.mp3 \         # TTS from any tagged script
+                  --subject-gender male
 ```
-
-## Voice convention
-
-Two Kokoro voices, paired by subject gender:
-
-- **Male voice**: `am_puck`
-- **Female voice**: `af_heart`
-- **Rule**: the subject speaks in their own-gender voice; the narrator takes the opposite gender for clear auditory separation.
-
-| Subject | Host voice | Quote voice |
-|---------|------------|-------------|
-| Male    | `af_heart` | `am_puck`   |
-| Female  | `am_puck`  | `af_heart`  |
-
-Override with `--host-voice` / `--quote-voice` on `oratio-tts`.
 
 ## Script format
 
@@ -175,56 +179,59 @@ Override with `--host-voice` / `--quote-voice` on `oratio-tts`.
 [HOST] More narration.
 ```
 
-- `[HOST]` = narrator voice, carries all framing and paraphrase.
-- `[<FIRSTNAME>]` = subject voice, **only verbatim quotes**, wrapped in `"…"`.
-- The agent writer picks the tag from the subject's first name: Mo Gawdat → `[MO]`, Dale Schuurmans → `[DALE]`, Naval Ravikant → `[NAVAL]`.
+- `[HOST]` — narrator voice, carries all framing and paraphrase.
+- `[<FIRSTNAME>]` — subject voice, **only verbatim quotes**, wrapped in `"…"`. Mo Gawdat → `[MO]`. Naval Ravikant → `[NAVAL]`.
 - Blank line = paragraph break (longer audio pause).
 
-## Repo layout
+Two Kokoro voices, paired by subject gender so the narrator and subject are always audibly different:
 
-```
-oratio/
-├── pyproject.toml                 # deps + three CLI entry points
-├── README.md                      # this file
-├── .claude/
-│   ├── skills/oratio/SKILL.md     # Claude Code skill spec (for in-session use)
-│   └── agents/
-│       ├── transcript-investigator.md
-│       ├── transcript-critic.md
-│       ├── opinion-aggregator.md
-│       ├── script-writer.md
-│       └── script-critic.md
-├── src/oratio/
-│   ├── orchestrator.py            # oratio CLI — the pipeline driver
-│   ├── youtube_fetcher/fetch.py   # oratio-fetch CLI — yt-dlp wrapper
-│   └── kokoro_tts/synthesize.py   # oratio-tts CLI — Kokoro TTS wrapper
-├── scripts/
-│   ├── smoke_sdk.py               # verify SDK + CLI auth
-│   ├── synth_batch.py             # batch synth one-off (Mo Gawdat)
-│   └── synth_dale.py              # batch synth one-off (Dale Schuurmans)
-└── output/                        # per-video artifacts (gitignored)
-```
+| Subject gender | Host voice | Quote voice |
+|---|---|---|
+| Male   | `af_heart` | `am_puck`  |
+| Female | `am_puck`  | `af_heart` |
 
-## Customizing the pipeline
+Override with `--host-voice` / `--quote-voice` on `oratio-tts`.
 
-Agent behavior lives in markdown. To change what an agent does, edit its
-spec in `.claude/agents/<role>.md` — the frontmatter describes the tools and
-purpose, the body is the system prompt. Next run picks up changes.
+## Customizing the agents
 
-**Common tweaks:**
+Agent behavior lives in markdown under [`.claude/agents/`](.claude/agents). The YAML frontmatter names the role and declares allowed tools; the body is the system prompt. Next run picks up your changes — no code edit required.
 
-- Loosen the `script-critic` acronym-expansion rule for technical subjects (it currently flags "AI" and "LLM" on every occurrence, which is overkill for audiences who already know those terms).
-- Change the chapter-count target in `opinion-aggregator` (default floats 3-5 based on content density).
-- Add a `--subject-name-hint` arg in `orchestrator.py` for subjects whose name isn't obvious from video metadata.
+Useful tweaks:
+
+- Loosen `script-critic` acronym-expansion for technical audiences (it currently nags "AI" and "LLM" on every occurrence).
+- Change chapter-count target in `opinion-aggregator` (defaults to 3–5 based on content density).
+- Tighten `transcript-investigator` density targets for longer sources.
 
 ## Known limitations
 
-- **Runtime is long.** A 60-min source takes ~45-60 min of agent wall-clock time + ~6 min of Kokoro synth on Apple Silicon. Investigator alone often runs 8-15 min because it grep-verifies every quote it extracts.
-- **Critic is strict on warnings.** Many warn-level issues are cosmetic (acronyms, homographs) and don't actually degrade audio; treat the verdict as advisory unless it's `block`.
-- **Single-video only.** The `interview-finder` phase mentioned in `SKILL.md` is not implemented yet — name-based multi-video runs need one more agent to search YouTube.
-- **English only.** Kokoro supports other languages but the pipeline voices + script conventions are tuned for English.
+- **Runtime is long.** A 60-min source takes ~45–60 min of agent wall-clock time plus ~6 min of Kokoro synth on Apple Silicon. The investigator alone runs 8–15 min because it grep-verifies every quote it extracts.
+- **Critic warnings are noisy.** Many `warn`-level issues (acronyms, homographs) don't actually degrade audio. Treat the verdict as advisory unless it's `block`.
+- **Single-video runs only.** The name-based interview-finder phase isn't built yet.
+- **English only.** Kokoro supports other languages but the voice conventions and script rules are tuned for English.
+- **macOS-tested.** Dependencies (`espeak-ng`, `ffmpeg`, `torch`) exist on Linux and WSL, but I haven't verified the full pipeline there.
+
+## Roadmap
+
+- `interview-finder` agent — one subject name in, N videos out, aggregator dedupes across them.
+- Relax `script-critic` acronym strictness for technical subjects, detect audience level automatically.
+- `--subject-name-hint` to help the aggregator when metadata is thin.
+- Optional `--style` preset for `script-writer` (editorial / narrative / lecture-notes).
+- Parallel chapter synthesis in `oratio-tts` (currently sequential per script).
+
+## Repo map
+
+```
+oratio/
+├── pyproject.toml                 # deps + 3 CLI entry points
+├── .claude/agents/                # 5 markdown agent specs (editable)
+├── src/oratio/
+│   ├── orchestrator.py            # oratio CLI — the pipeline driver
+│   ├── youtube_fetcher/fetch.py   # oratio-fetch — yt-dlp wrapper
+│   └── kokoro_tts/synthesize.py   # oratio-tts — two-voice Kokoro wrapper
+├── examples/                      # Dale Schuurmans short (mp3 + txt)
+└── output/                        # per-video artifacts (gitignored)
+```
 
 ## License
 
-MIT — but Kokoro model weights are Apache-2.0, and you must comply with YouTube's
-TOS for any transcripts you fetch.
+MIT for the Oratio code. Kokoro model weights are Apache-2.0. You are responsible for complying with YouTube's Terms of Service for any transcripts you fetch.
