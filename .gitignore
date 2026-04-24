@@ -22,6 +22,7 @@ output/
 # ...but keep curated demo assets
 !examples/*.mp3
 !examples/*.txt
+!examples/*.mp4
 
 # OS
 .DS_Store

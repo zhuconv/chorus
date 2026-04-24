@@ -12,8 +12,11 @@ Oratio is a single CLI that points at a YouTube URL, runs a five-stage Claude Op
 
 ## Listen to an example
 
-A 4.9-minute short produced end-to-end by the pipeline from a 64-minute RLC 2025 keynote by **Dale Schuurmans** (Google DeepMind), "Language Models and Computation." No human edits inside the run.
+A 4.9-minute short produced end-to-end by the pipeline from a 64-minute RLC 2025 keynote by **Dale Schuurmans**, *Language Models and Computation*. No human edits inside the run.
 
+<video src="https://github.com/zhuconv/oratio/raw/main/examples/demo.mp4" controls width="100%"></video>
+
+*If the player above doesn't render in your GitHub client, you can still:*
 🎧 **[Play the MP3](https://raw.githubusercontent.com/zhuconv/oratio/main/examples/dale_schuurmans_llms_as_universal_computers.mp3)** · 📄 **[Read the script](examples/dale_schuurmans_llms_as_universal_computers.txt)**
 
 The `.txt` is the raw `[HOST]` / `[DALE]` tagged script the agents wrote. The MP3 is what Kokoro did with it. Both live in [`examples/`](examples/).
@@ -44,46 +47,11 @@ The result is something closer to a written essay read aloud than a robotic reca
 
 ## Pipeline
 
-```
-  YouTube URL
-      │
-      ▼
- ┌───────────────┐
- │  oratio-fetch │   yt-dlp → transcript.srt + transcript.txt + metadata.json
- └───────────────┘
-      │
-      ▼
- ┌─────────────────────────┐
- │ transcript-investigator │  Opus 4.6 — extracts (theme, thesis, verbatim_quote,
- └─────────────────────────┘  timestamp) tuples                → opinions.raw.json
-      │
-      ▼
- ┌──────────────────────┐
- │  transcript-critic   │    Opus 4.6 — greps every quote against the transcript,
- └──────────────────────┘    flags fabrication / overreach   → critic_report.json
-      │                      ↺ loops back to investigator (max 2x)
-      ▼
- ┌──────────────────────┐
- │ opinion-aggregator   │    Opus 4.6 — clusters opinions into 3-5 themes, picks
- └──────────────────────┘    narrative order, tags subject_gender → opinions.json
-      │
-      ▼
- ┌──────────────────────┐
- │   script-writer      │    Opus 4.6 — writes short + one chapter per theme in
- └──────────────────────┘    [HOST]/[SUBJECT] form        → short/, long/ch*.txt
-      │
-      ▼
- ┌──────────────────────┐
- │   script-critic      │    Opus 4.6 — re-verifies verbatim fidelity, TTS style,
- └──────────────────────┘    word counts, acronym expansion
-      │                      ↺ loops back to writer (max 2x)
-      ▼
- ┌──────────────────────┐
- │      oratio-tts      │    Kokoro 82M, local (CPU/MPS) — two-voice render
- └──────────────────────┘                               → short.mp3, chNN.mp3
-```
+<p align="center">
+  <img src="assets/pipeline.svg" alt="Oratio pipeline: YouTube URL → fetch → investigator → transcript-critic → aggregator → script-writer → script-critic → Kokoro TTS → MP3s. Critics can retry their upstream agent up to 2x." width="100%"/>
+</p>
 
-Every agent is a single `claude_agent_sdk.query()` with a role-specific system prompt loaded from `.claude/agents/<role>.md`. Critics can send work back to their upstream agent for one retry before the orchestrator gives up and proceeds.
+Every agent box is a single `claude_agent_sdk.query()` call with a role-specific system prompt loaded from `.claude/agents/<role>.md`. Critics can send work back to their upstream agent for one retry before the orchestrator gives up and proceeds.
 
 ## Case studies
 

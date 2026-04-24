@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="ui-sans-serif,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif">
+  <defs>
+    <linearGradient id="agentGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#bc8cff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#8957e5" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="criticGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f85149" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#da3633" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="toolGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#1f6feb" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="ioGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#3fb950" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#238636" stop-opacity="0.05"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7d8590"/>
+    </marker>
+    <marker id="retryArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149"/>
+    </marker>
+    <filter id="soft" x="-5%" y="-10%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- legend (top) -->
+  <g font-size="13" fill="#7d8590">
+    <rect x="40" y="26" width="14" height="14" rx="3" fill="url(#ioGrad)" stroke="#3fb950" stroke-width="1"/>
+    <text x="62" y="37">I/O</text>
+    <rect x="110" y="26" width="14" height="14" rx="3" fill="url(#toolGrad)" stroke="#58a6ff" stroke-width="1"/>
+    <text x="132" y="37">CLI tool (local)</text>
+    <rect x="248" y="26" width="14" height="14" rx="3" fill="url(#agentGrad)" stroke="#bc8cff" stroke-width="1"/>
+    <text x="270" y="37">Claude Opus 4.6 agent</text>
+    <rect x="430" y="26" width="14" height="14" rx="3" fill="url(#criticGrad)" stroke="#f85149" stroke-width="1"/>
+    <text x="452" y="37">Critic (gatekeeper, can retry upstream)</text>
+  </g>
+
+  <!-- row 1: INPUT → fetch → investigator → transcript-critic -->
+  <!-- INPUT: YouTube URL -->
+  <g filter="url(#soft)">
+    <rect x="40" y="80" width="140" height="70" rx="10" fill="url(#ioGrad)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="110" y="107" text-anchor="middle" font-size="14" font-weight="600" fill="#3fb950">YouTube URL</text>
+    <text x="110" y="128" text-anchor="middle" font-size="11" fill="#7d8590">any long video</text>
+  </g>
+
+  <!-- fetch -->
+  <g filter="url(#soft)">
+    <rect x="220" y="80" width="160" height="70" rx="10" fill="url(#toolGrad)" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="300" y="103" text-anchor="middle" font-size="14" font-weight="600" fill="#58a6ff">oratio-fetch</text>
+    <text x="300" y="122" text-anchor="middle" font-size="11" fill="#7d8590">yt-dlp</text>
+    <text x="300" y="138" text-anchor="middle" font-size="10" fill="#7d8590">transcript.srt + .txt</text>
+  </g>
+
+  <!-- investigator -->
+  <g filter="url(#soft)">
+    <rect x="420" y="80" width="180" height="70" rx="10" fill="url(#agentGrad)" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="510" y="103" text-anchor="middle" font-size="14" font-weight="600" fill="#bc8cff">transcript-investigator</text>
+    <text x="510" y="122" text-anchor="middle" font-size="11" fill="#7d8590">extracts (theme, thesis,</text>
+    <text x="510" y="137" text-anchor="middle" font-size="11" fill="#7d8590">verbatim quote, timestamp)</text>
+  </g>
+
+  <!-- transcript-critic -->
+  <g filter="url(#soft)">
+    <rect x="640" y="80" width="180" height="70" rx="10" fill="url(#criticGrad)" stroke="#f85149" stroke-width="1.5"/>
+    <text x="730" y="103" text-anchor="middle" font-size="14" font-weight="600" fill="#f85149">transcript-critic</text>
+    <text x="730" y="122" text-anchor="middle" font-size="11" fill="#7d8590">greps every quote</text>
+    <text x="730" y="137" text-anchor="middle" font-size="11" fill="#7d8590">against transcript</text>
+  </g>
+
+  <!-- aggregator (end of row 1) -->
+  <g filter="url(#soft)">
+    <rect x="860" y="80" width="180" height="70" rx="10" fill="url(#agentGrad)" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="950" y="103" text-anchor="middle" font-size="14" font-weight="600" fill="#bc8cff">opinion-aggregator</text>
+    <text x="950" y="122" text-anchor="middle" font-size="11" fill="#7d8590">clusters into 3–5 themes,</text>
+    <text x="950" y="137" text-anchor="middle" font-size="11" fill="#7d8590">picks narrative order</text>
+  </g>
+
+  <!-- arrows row 1 -->
+  <g stroke="#7d8590" stroke-width="1.5" fill="none">
+    <path d="M 180 115 L 218 115" marker-end="url(#arrow)"/>
+    <path d="M 380 115 L 418 115" marker-end="url(#arrow)"/>
+    <path d="M 600 115 L 638 115" marker-end="url(#arrow)"/>
+    <path d="M 820 115 L 858 115" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- retry loop: transcript-critic → investigator -->
+  <g stroke="#f85149" stroke-width="1.5" fill="none" stroke-dasharray="5 4">
+    <path d="M 730 80 Q 730 50 510 50 Q 470 50 470 80" marker-end="url(#retryArrow)"/>
+  </g>
+  <text x="620" y="42" text-anchor="middle" font-size="11" fill="#f85149" font-style="italic">retry ≤ 2×</text>
+
+  <!-- ─────────── connector from row 1 end (aggregator) to row 2 start (writer) ─────────── -->
+  <g stroke="#7d8590" stroke-width="1.5" fill="none">
+    <!-- aggregator.bottom → wrap-right → writer.top -->
+    <path d="M 950 150 L 950 200 L 1080 200 L 1080 260 L 300 260 L 300 300" marker-end="url(#arrow)"/>
+  </g>
+  <text x="690" y="254" text-anchor="middle" font-size="11" fill="#7d8590" font-style="italic">opinions.json</text>
+
+  <!-- row 2: writer → script-critic → oratio-tts → MP3 -->
+  <g filter="url(#soft)">
+    <rect x="220" y="300" width="160" height="70" rx="10" fill="url(#agentGrad)" stroke="#bc8cff" stroke-width="1.5"/>
+    <text x="300" y="323" text-anchor="middle" font-size="14" font-weight="600" fill="#bc8cff">script-writer</text>
+    <text x="300" y="342" text-anchor="middle" font-size="11" fill="#7d8590">short + one chapter per</text>
+    <text x="300" y="357" text-anchor="middle" font-size="11" fill="#7d8590">theme, [HOST] / [NAME] tags</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="420" y="300" width="160" height="70" rx="10" fill="url(#criticGrad)" stroke="#f85149" stroke-width="1.5"/>
+    <text x="500" y="323" text-anchor="middle" font-size="14" font-weight="600" fill="#f85149">script-critic</text>
+    <text x="500" y="342" text-anchor="middle" font-size="11" fill="#7d8590">verbatim fidelity,</text>
+    <text x="500" y="357" text-anchor="middle" font-size="11" fill="#7d8590">TTS style, word counts</text>
+  </g>
+
+  <g filter="url(#soft)">
+    <rect x="620" y="300" width="160" height="70" rx="10" fill="url(#toolGrad)" stroke="#58a6ff" stroke-width="1.5"/>
+    <text x="700" y="323" text-anchor="middle" font-size="14" font-weight="600" fill="#58a6ff">oratio-tts</text>
+    <text x="700" y="342" text-anchor="middle" font-size="11" fill="#7d8590">Kokoro 82M · local</text>
+    <text x="700" y="357" text-anchor="middle" font-size="11" fill="#7d8590">two voices, CPU / MPS</text>
+  </g>
+
+  <!-- MP3 output -->
+  <g filter="url(#soft)">
+    <rect x="820" y="300" width="220" height="70" rx="10" fill="url(#ioGrad)" stroke="#3fb950" stroke-width="1.5"/>
+    <text x="930" y="323" text-anchor="middle" font-size="14" font-weight="600" fill="#3fb950">MP3s</text>
+    <text x="930" y="342" text-anchor="middle" font-size="11" fill="#7d8590">short.mp3 (~5 min) +</text>
+    <text x="930" y="357" text-anchor="middle" font-size="11" fill="#7d8590">chNN.mp3 (~10 min each)</text>
+  </g>
+
+  <!-- arrows row 2 -->
+  <g stroke="#7d8590" stroke-width="1.5" fill="none">
+    <path d="M 380 335 L 418 335" marker-end="url(#arrow)"/>
+    <path d="M 580 335 L 618 335" marker-end="url(#arrow)"/>
+    <path d="M 780 335 L 818 335" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- retry loop: script-critic → writer -->
+  <g stroke="#f85149" stroke-width="1.5" fill="none" stroke-dasharray="5 4">
+    <path d="M 500 300 Q 500 275 300 275 Q 260 275 260 300" marker-end="url(#retryArrow)"/>
+  </g>
+  <text x="400" y="267" text-anchor="middle" font-size="11" fill="#f85149" font-style="italic">retry ≤ 2×</text>
+
+  <!-- footer tag: every agent = one query() -->
+  <g font-size="12" fill="#7d8590">
+    <text x="600" y="430" text-anchor="middle" font-style="italic">
+      every agent box = one claude_agent_sdk.query() call
+    </text>
+    <text x="600" y="450" text-anchor="middle" font-style="italic">
+      system prompt loaded from .claude/agents/&lt;role&gt;.md  ·  auth inherited from local `claude` CLI
+    </text>
+  </g>
+
+  <!-- model/auth pill -->
+  <g filter="url(#soft)">
+    <rect x="465" y="480" width="270" height="38" rx="19" fill="#0d1117" fill-opacity="0.04" stroke="#d97757" stroke-width="1.5"/>
+    <text x="600" y="504" text-anchor="middle" font-size="13" font-weight="600" fill="#d97757">model · claude-opus-4-6</text>
+  </g>
+</svg>
