@@ -1,8 +1,8 @@
 # Chorus
 
-**Your Watch Later is a graveyard of 60-minute talks you'll never finish. Chorus makes them speak again — in two voices, in five minutes flat.**
+**Tired of stacking conference lectures, TED talks, and deep 1-on-1 interviews into a Watch Later you'll never actually finish? Chorus is for you — drop in the URL, walk away with a 5-minute two-voice short where a host narrates and the speaker themselves quotes verbatim.**
 
-Paste a YouTube URL — or just a name like `"Dale Schuurmans"` — and walk away with a 5-minute two-voice short plus themed long chapters: a host narrates, the subject *speaks* their own verbatim quotes. Name mode hunts 3–5 talks across YouTube and stitches a chronological audio biography of how the person's thinking actually evolved.
+Or hand it a name — `"Dale Schuurmans"`, `"Mo Gawdat"` — and Chorus searches YouTube, picks 3–5 talks, and stitches a chronological audio biography that tracks how the person's views evolved era by era. Either mode also gives you themed ~10-minute long chapters alongside the short.
 
 Claude Opus 4.6 agents write it; a critic agent `grep -F`s every quoted line back into the raw transcript and **blocks the pipeline if a single word drifts**. Kokoro 82M renders it locally in two voices. Every quote in the script links back to the exact second on YouTube. Runs on your Claude Pro/Max subscription — **no `ANTHROPIC_API_KEY` needed**.
 
